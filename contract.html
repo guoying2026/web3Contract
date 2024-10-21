@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Contract Interaction</title>
+    <script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js/dist/web3.min.js"></script>
+</head>
+<body>
+<h1>与智能合约交互</h1>
+
+<h1>Create a New Question</h1>
+
+<!-- 创建问题的表单 -->
+<div>
+    <h3>Create a Question</h3>
+    <label for="questionText">Enter Question:</label>
+    <input type="text" id="questionText" placeholder="Enter your question"><br/>
+
+    <label for="questionType">Enter Question Type (Hash):</label>
+    <input type="text" id="questionType" placeholder="Enter question type hash" value="0xc35796d2ada155c4b71682a6143ac5f3f46d618b2d1ff47a66117fbac82407b2">
+    <br/>
+    <label for="betOption1">Bet Option 1:</label>
+    <input type="text" id="betOption1" placeholder="Option 1">
+    <br/>
+    <label for="betOption2">Bet Option 2:</label>
+    <input type="text" id="betOption2" placeholder="Option 2">
+    <br/>
+    <button onclick="createQuestion()">Create Question</button>
+</div>
+
+<!-- 显示合约地址 -->
+<div>
+    <h2>合约地址: <span id="contractAddress"></span></h2>
+</div>
+
+<!-- 显示合约余额 -->
+<div>
+    <h3>合约余额: <span id="etherBalance"></span> ETH</h3>
+    <button onclick="getEtherBalance()">刷新合约余额</button>
+</div>
+
+<!-- 投注功能 -->
+<div>
+    <h3>投注</h3>
+    <label for="betOption">选择选项：</label>
+    <select id="betOption">
+        <option value="0">选项 A</option>
+        <option value="1">选项 B</option>
+    </select>
+    <label for="tokenAddress">代币地址：</label>
+    <input type="text" id="tokenAddress" value="0x45F54e9A8bcc8F823cC5e1BDB1554Bc980BC95BD" placeholder="代币地址">
+    <label for="amount">投注金额：</label>
+    <input type="number" id="amount" placeholder="投注金额">
+    <button onclick="approve()">授权</button>
+    <button onclick="placeBet()">投注</button>
+</div>
+
+<!-- 公布正确选项 -->
+<div>
+    <h3>公布正确选项</h3>
+    <label for="winningOption">选择正确选项：</label>
+    <select id="winningOption">
+        <option value="0">选项 A</option>
+        <option value="1">选项 B</option>
+    </select>
+    <button onclick="revealWinningOption()">公布正确选项</button>
+</div>
+
+<!-- 分发奖励 -->
+<div>
+    <h3>分发奖励</h3>
+    <label for="rewardToken">代币地址：</label>
+    <input type="text" id="rewardToken" value="0x45F54e9A8bcc8F823cC5e1BDB1554Bc980BC95BD" placeholder="代币地址">
+    <label for="rewardAmount">奖励金额：</label>
+    <input type="number" id="rewardAmount" placeholder="奖励金额">
+    <label for="recipientAddress">接收者地址：</label>
+    <input type="text" id="recipientAddress" placeholder="接收者地址">
+    <button onclick="distributeReward()">分发奖励</button>
+</div>
+
+<script>
+    // 使用 Web3.js 与 MetaMask 交互
+    const web3 = new Web3(Web3.givenProvider);
+
+    // 创建问题函数
+    async function createQuestion() {
+        const userAddress = await connectWallet();
+
+        // 获取表单中的输入值
+        const _question = document.getElementById('questionText').value;
+        const questionTypeHash = document.getElementById('questionType').value;
+        const betOption1 = document.getElementById('betOption1').value;
+        const betOption2 = document.getElementById('betOption2').value;
+
+        // 检查输入是否有效
+        if (!_question || !questionTypeHash || !betOption1 || !betOption2) {
+            alert('请填写所有字段');
+            return;
+        }
+
+        // 准备投注选项数组
+        const _betOptions = [betOption1, betOption2]; // 你可以添加更多选项
+        const questionCreateContractAddress = "0xFc53ADd0faAE6fCECC9F7A4Ac1c6048E53b58855";
+        const questionCreateContractABI = [
+            {
+                "type": "constructor",
+                "inputs": [
+                    {
+                        "name": "_configCenter",
+                        "type": "address",
+                        "internalType": "address"
+                    }
+                ],
+                "stateMutability": "nonpayable"
+            },
+            {
+                "type": "function",
+                "name": "configCenter",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "name": "",
+                        "type": "address",
+                        "internalType": "address"
+                    }
+                ],
+                "stateMutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "createQuestion",
+                "inputs": [
+                    {
+                        "name": "_question",
+                        "type": "string",
+                        "internalType": "string"
+                    },
+                    {
+                        "name": "questionTypeHash",
+                        "type": "bytes32",
+                        "internalType": "bytes32"
+                    },
+                    {
+                        "name": "_betOptions",
+                        "type": "string[]",
+                        "internalType": "string[]"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "name": "",
+                        "type": "address",
+                        "internalType": "address"
+                    }
+                ],
+                "stateMutability": "nonpayable"
+            },
+            {
+                "type": "function",
+                "name": "owner",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "name": "",
+                        "type": "address",
+                        "internalType": "address"
+                    }
+                ],
+                "stateMutability": "view"
+            },
+            {
+                "type": "event",
+                "name": "QuestionCreated",
+                "inputs": [
+                    {
+                        "name": "questionContract",
+                        "type": "address",
+                        "indexed": false,
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "creator",
+                        "type": "address",
+                        "indexed": false,
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "question",
+                        "type": "string",
+                        "indexed": false,
+                        "internalType": "string"
+                    }
+                ],
+                "anonymous": false
+            }
+        ];
+        const questionCreateContract = new web3.eth.Contract(questionCreateContractABI, questionCreateContractAddress);
+        try {
+            // 调用 createQuestion 函数
+            const tx = await questionCreateContract.methods.createQuestion(_question, questionTypeHash, _betOptions).send({
+                from: userAddress
+            });
+
+            console.log('Transaction success:', tx.transactionHash);
+            document.getElementById('transactionResult').innerHTML = `Transaction Hash: ${tx.transactionHash}`;
+            alert('问题创建成功！');
+        } catch (error) {
+            console.error('创建问题失败:', error);
+            document.getElementById('transactionResult').innerHTML = '创建问题失败，请检查输入数据。';
+            alert('创建问题失败，请检查输入数据或连接钱包。');
+        }
+    }
+    const mUsdtAddress = "0x45F54e9A8bcc8F823cC5e1BDB1554Bc980BC95BD";
+    const contractAddress = "0xfbd858a1adfb361358966d7de9d0fbd8afa2ca89"; // 替换为你的合约地址
+
+    // 获取 mUsdt 合约实例
+    const mUsdtABI = [
+        {
+            "type": "constructor",
+            "inputs": [],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "function",
+            "name": "allowance",
+            "inputs": [
+                {
+                    "name": "owner",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "spender",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "approve",
+            "inputs": [
+                {
+                    "name": "spender",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "value",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "bool",
+                    "internalType": "bool"
+                }
+            ],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "function",
+            "name": "balanceOf",
+            "inputs": [
+                {
+                    "name": "account",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "decimals",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint8",
+                    "internalType": "uint8"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "mint",
+            "inputs": [
+                {
+                    "name": "to",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "amount",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "function",
+            "name": "name",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "string",
+                    "internalType": "string"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "owner",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "renounceOwnership",
+            "inputs": [],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "function",
+            "name": "symbol",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "string",
+                    "internalType": "string"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "totalSupply",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "transfer",
+            "inputs": [
+                {
+                    "name": "to",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "value",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "bool",
+                    "internalType": "bool"
+                }
+            ],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "function",
+            "name": "transferFrom",
+            "inputs": [
+                {
+                    "name": "from",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "to",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "value",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "bool",
+                    "internalType": "bool"
+                }
+            ],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "function",
+            "name": "transferOwnership",
+            "inputs": [
+                {
+                    "name": "newOwner",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "event",
+            "name": "Approval",
+            "inputs": [
+                {
+                    "name": "owner",
+                    "type": "address",
+                    "indexed": true,
+                    "internalType": "address"
+                },
+                {
+                    "name": "spender",
+                    "type": "address",
+                    "indexed": true,
+                    "internalType": "address"
+                },
+                {
+                    "name": "value",
+                    "type": "uint256",
+                    "indexed": false,
+                    "internalType": "uint256"
+                }
+            ],
+            "anonymous": false
+        },
+        {
+            "type": "event",
+            "name": "OwnershipTransferred",
+            "inputs": [
+                {
+                    "name": "previousOwner",
+                    "type": "address",
+                    "indexed": true,
+                    "internalType": "address"
+                },
+                {
+                    "name": "newOwner",
+                    "type": "address",
+                    "indexed": true,
+                    "internalType": "address"
+                }
+            ],
+            "anonymous": false
+        },
+        {
+            "type": "event",
+            "name": "Transfer",
+            "inputs": [
+                {
+                    "name": "from",
+                    "type": "address",
+                    "indexed": true,
+                    "internalType": "address"
+                },
+                {
+                    "name": "to",
+                    "type": "address",
+                    "indexed": true,
+                    "internalType": "address"
+                },
+                {
+                    "name": "value",
+                    "type": "uint256",
+                    "indexed": false,
+                    "internalType": "uint256"
+                }
+            ],
+            "anonymous": false
+        },
+        {
+            "type": "error",
+            "name": "ERC20InsufficientAllowance",
+            "inputs": [
+                {
+                    "name": "spender",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "allowance",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                },
+                {
+                    "name": "needed",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ]
+        },
+        {
+            "type": "error",
+            "name": "ERC20InsufficientBalance",
+            "inputs": [
+                {
+                    "name": "sender",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "balance",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                },
+                {
+                    "name": "needed",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ]
+        },
+        {
+            "type": "error",
+            "name": "ERC20InvalidApprover",
+            "inputs": [
+                {
+                    "name": "approver",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ]
+        },
+        {
+            "type": "error",
+            "name": "ERC20InvalidReceiver",
+            "inputs": [
+                {
+                    "name": "receiver",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ]
+        },
+        {
+            "type": "error",
+            "name": "ERC20InvalidSender",
+            "inputs": [
+                {
+                    "name": "sender",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ]
+        },
+        {
+            "type": "error",
+            "name": "ERC20InvalidSpender",
+            "inputs": [
+                {
+                    "name": "spender",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ]
+        },
+        {
+            "type": "error",
+            "name": "OwnableInvalidOwner",
+            "inputs": [
+                {
+                    "name": "owner",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ]
+        },
+        {
+            "type": "error",
+            "name": "OwnableUnauthorizedAccount",
+            "inputs": [
+                {
+                    "name": "account",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ]
+        }
+    ];
+    const mUsdtContract = new web3.eth.Contract(mUsdtABI, mUsdtAddress);
+
+    const contractABI = [
+        {
+            "type": "function",
+            "name": "betOptions",
+            "inputs": [
+                {
+                    "name": "",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "name",
+                    "type": "string",
+                    "internalType": "string"
+                },
+                {
+                    "name": "totalBetAmount",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "bets",
+            "inputs": [
+                {
+                    "name": "",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "creator",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "distributeReward",
+            "inputs": [
+                {
+                    "name": "token",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "amount",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                },
+                {
+                    "name": "recipient",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "function",
+            "name": "functionDependencies",
+            "inputs": [
+                {
+                    "name": "",
+                    "type": "string",
+                    "internalType": "string"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "getEtherBalance",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "getTokenBalance",
+            "inputs": [
+                {
+                    "name": "tokenAddress",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "initialize",
+            "inputs": [
+                {
+                    "name": "_creator",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "_question",
+                    "type": "string",
+                    "internalType": "string"
+                },
+                {
+                    "name": "_betOptions",
+                    "type": "string[]",
+                    "internalType": "string[]"
+                },
+                {
+                    "name": "functionNames",
+                    "type": "string[]",
+                    "internalType": "string[]"
+                },
+                {
+                    "name": "dependencyAddresses",
+                    "type": "address[]",
+                    "internalType": "address[]"
+                }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "function",
+            "name": "isRevealed",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "bool",
+                    "internalType": "bool"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "placeBet",
+            "inputs": [
+                {
+                    "name": "optionIndex",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                },
+                {
+                    "name": "token",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "amount",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "function",
+            "name": "question",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "string",
+                    "internalType": "string"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "function",
+            "name": "revealWinningOption",
+            "inputs": [
+                {
+                    "name": "optionIndex",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "function",
+            "name": "setFunctionDependency",
+            "inputs": [
+                {
+                    "name": "functionName",
+                    "type": "string",
+                    "internalType": "string"
+                },
+                {
+                    "name": "newDependencyAddress",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+        },
+        {
+            "type": "function",
+            "name": "winningOption",
+            "inputs": [],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "uint256",
+                    "internalType": "uint256"
+                }
+            ],
+            "stateMutability": "view"
+        },
+        {
+            "type": "event",
+            "name": "BetPlaced",
+            "inputs": [
+                {
+                    "name": "bettor",
+                    "type": "address",
+                    "indexed": true,
+                    "internalType": "address"
+                },
+                {
+                    "name": "optionIndex",
+                    "type": "uint256",
+                    "indexed": false,
+                    "internalType": "uint256"
+                },
+                {
+                    "name": "token",
+                    "type": "address",
+                    "indexed": true,
+                    "internalType": "address"
+                },
+                {
+                    "name": "amount",
+                    "type": "uint256",
+                    "indexed": false,
+                    "internalType": "uint256"
+                }
+            ],
+            "anonymous": false
+        },
+        {
+            "type": "event",
+            "name": "RewardDistributed",
+            "inputs": [
+                {
+                    "name": "recipient",
+                    "type": "address",
+                    "indexed": true,
+                    "internalType": "address"
+                },
+                {
+                    "name": "token",
+                    "type": "address",
+                    "indexed": true,
+                    "internalType": "address"
+                },
+                {
+                    "name": "amount",
+                    "type": "uint256",
+                    "indexed": false,
+                    "internalType": "uint256"
+                }
+            ],
+            "anonymous": false
+        },
+        {
+            "type": "event",
+            "name": "WinningOptionRevealed",
+            "inputs": [
+                {
+                    "name": "optionIndex",
+                    "type": "uint256",
+                    "indexed": true,
+                    "internalType": "uint256"
+                }
+            ],
+            "anonymous": false
+        }
+    ];
+    const questionContract = new web3.eth.Contract(contractABI, contractAddress);
+
+    // 用户连接钱包
+    async function connectWallet() {
+        const accounts = await web3.eth.requestAccounts();
+        return accounts[0];  // 返回用户的地址
+    }
+
+    // 授权函数
+    async function approve() {
+        const userAddress = await connectWallet();
+        const amount = document.getElementById('amount').value;
+
+        // 检查用户输入的金额是否为空
+        if (!amount || isNaN(amount)) {
+            alert('请输入有效的投注金额');
+            return;
+        }
+
+        const amountInWei = web3.utils.toWei(amount, 'ether');
+
+        try {
+            // 授权合约使用 mUsdt 代币
+            const approveTx = await mUsdtContract.methods.approve(contractAddress, amountInWei).send({ from: userAddress });
+            console.log('Approve transaction hash:', approveTx.transactionHash);
+            alert('授权成功！');
+        } catch (error) {
+            console.error('授权失败:', error);
+            alert('授权失败，请检查。');
+        }
+    }
+
+    // 投注函数
+    async function placeBet() {
+        const userAddress = await connectWallet();
+        const optionIndex = document.getElementById('betOption').value;
+        const amount = document.getElementById('amount').value;
+        console.log('投注选项');
+        console.log(optionIndex);
+
+        // 检查用户输入的金额是否为空
+        if (!amount || isNaN(amount)) {
+            alert('请输入有效的投注金额');
+            return;
+        }
+
+        const amountInWei = web3.utils.toWei(amount, 'ether');
+
+        try {
+            // 调用投注合约的 placeBet 方法
+            const placeBetTx = await questionContract.methods.placeBet(optionIndex, mUsdtAddress, amountInWei).send({
+                from: userAddress
+            });
+            console.log('PlaceBet transaction hash:', placeBetTx.transactionHash);
+            alert('投注成功!');
+        } catch (error) {
+            console.error('投注失败:', error);
+            alert('投注失败，请检查授权或代币余额。');
+        }
+    }
+
+    // 获取合约余额
+    async function getEtherBalance() {
+        const balance = await web3.eth.getBalance(contractAddress);
+        const etherValue = web3.utils.fromWei(balance, 'ether');
+        document.getElementById('etherBalance').innerText = etherValue;
+    }
+
+    // 显示合约地址
+    document.getElementById('contractAddress').innerText = contractAddress;
+
+    // 初始化时自动获取余额
+    getEtherBalance();
+</script>
+</body>
+</html>
