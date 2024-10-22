@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.0;
 
+import "Module/Pay/IPay.sol";
+import "Module/RewardDistribution/IRewardStrategy.sol";
+import "Module/Announcement/IAnnouncementStrategy.sol";
+
 contract SubjectiveQuestion {
     // 具体问题
     string public question;
@@ -57,15 +61,16 @@ contract SubjectiveQuestion {
     // 用户下注到特定选项
     function placeBet(uint256 optionIndex, address token, uint256 amount) external {
         require(optionIndex < betOptions.length, "Invalid bet option");
-        address tokenManagerAddress = functionDependencies["TokenManager"];
-        require(tokenManagerAddress != address(0), "TokenManager not configured");
-
-        TokenManager tokenManager = TokenManager(tokenManagerAddress);
-        require(tokenManager.isSupportedToken(token), "Token not supported");
         require(amount > 0, "Bet amount must be greater than 0");
+        require(!isRevealed, "Winning option has already been revealed");
 
-        // 通过 TokenManager 的 pay 函数将资金转入当前问题合约
-        tokenManager.pay(msg.sender, address(this), token, amount);
+        address IPayAddress = functionDependencies["IPay"];
+        require(IPayAddress != address(0), "IPay not configured");
+
+        IPay ipay = IPay(IPayAddress);
+
+        // 通过 pay 函数将资金转入当前问题合约
+        ipay.pay(msg.sender, address(this), token, amount);
 
         // 更新选项的总投注金额
         betOptions[optionIndex].totalBetAmount += amount;
@@ -85,11 +90,11 @@ contract SubjectiveQuestion {
         winningOption = optionIndex;
 
         // 调用公告合约（通过依赖注入）
-        address announcementManagerAddress = functionDependencies["AnnouncementManager"];
-        require(announcementManagerAddress != address(0), "AnnouncementManager not configured");
+        address announcementAddress = functionDependencies["IAnnouncementStrategy"];
+        require(announcementAddress != address(0), "AnnouncementAddress not configured");
 
-        IAnnouncementManager announcementManager = IAnnouncementManager(announcementManagerAddress);
-        announcementManager.announceWinningOption(optionIndex);
+        IAnnouncementStrategy announcement = IAnnouncementStrategy(announcementAddress);
+        announcement.announceWinningOption(optionIndex);
 
         // 触发事件，记录公布的选项
         emit WinningOptionRevealed(optionIndex);
@@ -103,11 +108,11 @@ contract SubjectiveQuestion {
         require(bets[recipient][token] >= amount, "Not enough bet amount");
         bets[recipient][token] -= amount;
 
-        address rewardManagerAddress = functionDependencies["RewardManager"];
-        require(rewardManagerAddress != address(0), "RewardManager not configured");
+        address rewardStrategyAddress = functionDependencies["IRewardStrategy"];
+        require(rewardStrategyAddress != address(0), "rewardStrategyAddress not configured");
 
-        IRewardManager rewardManager = IRewardManager(rewardManagerAddress);
-        rewardManager.distribute(token, amount, recipient);
+        IRewardStrategy irewardStrategy = IRewardStrategy(rewardStrategyAddress);
+        irewardStrategy.distributeReward(token, amount, recipient);
     }
 
     // 设置新的函数依赖
@@ -124,22 +129,6 @@ contract SubjectiveQuestion {
         IERC20 token = IERC20(tokenAddress);
         return token.balanceOf(address(this));
     }
-}
-
-// 依赖合约接口：TokenManager
-interface ITokenManager {
-    function isSupportedToken(address token) external view returns (bool);
-    function pay(address from, address to, address token, uint256 amount) external;
-}
-
-// 依赖合约接口：RewardManager
-interface IRewardManager {
-    function distribute(address token, uint256 amount, address recipient) external;
-}
-
-// 依赖合约接口：AnnouncementManager（公告合约）
-interface IAnnouncementManager {
-    function announceWinningOption(uint256 optionIndex) external;
 }
 
 interface IERC20 {

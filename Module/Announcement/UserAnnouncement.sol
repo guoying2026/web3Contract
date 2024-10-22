@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.0;
 
-interface IAnnouncementStrategy {
-    function announceWinningOption(uint256 optionIndex) external;
-}
+import "Module/Announcement/IAnnouncementStrategy.sol";
 
 contract UserAnnouncement is IAnnouncementStrategy {
     address public owner; // 管理员地址
