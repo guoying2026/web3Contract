@@ -4,18 +4,17 @@ pragma solidity ^0.8.0;
 import "Module/Announcement/IAnnouncementStrategy.sol";
 
 contract UserAnnouncement is IAnnouncementStrategy {
-    address public owner; // 管理员地址
+    event WinningOptionAnnounced(uint256 optionIndex);
 
-    event WinningOptionAnnounced(uint256 optionIndex); // 当赢的选项被公布时触发
+    // 公布赢的选项并返回获胜索引
+    function announceWinningOption(bytes memory data) external override returns (uint256) {
+        // 从 data 中解析用户输入的选项索引
+        uint256 optionIndex = abi.decode(data, (uint256));
 
-    constructor() {
-        owner = msg.sender;
-    }
-
-    // 公布赢的选项
-    function announceWinningOption(uint256 optionIndex) external override {
-        require(msg.sender == owner, "Only owner can announce the winning option");
-
+        // 触发事件
         emit WinningOptionAnnounced(optionIndex);
+
+        // 返回用户输入的选项索引
+        return optionIndex;
     }
 }

@@ -82,23 +82,22 @@ contract SubjectiveQuestion {
         emit BetPlaced(msg.sender, optionIndex, token, amount);
     }
 
-    // 公布赢的选项（仅限创建者调用）
-    function revealWinningOption(uint256 optionIndex) external {
-        require(optionIndex < betOptions.length, "Invalid option index");
+    // 公布赢的选项
+    function revealWinningOption(bytes memory data) external {
         require(!isRevealed, "Winning option has already been revealed");
-
-        winningOption = optionIndex;
 
         // 调用公告合约（通过依赖注入）
         address announcementAddress = functionDependencies["IAnnouncementStrategy"];
         require(announcementAddress != address(0), "AnnouncementAddress not configured");
 
         IAnnouncementStrategy announcement = IAnnouncementStrategy(announcementAddress);
-        announcement.announceWinningOption(optionIndex);
 
-        // 触发事件，记录公布的选项
-        emit WinningOptionRevealed(optionIndex);
+        uint256 optionIndex = announcement.announceWinningOption(data);
 
+        winningOption = optionIndex;
+
+        emit WinningOptionRevealed(winningOption);
+        
         isRevealed = true;
     }
 

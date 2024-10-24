@@ -60,6 +60,9 @@ contract ConfigCenter {
         Module storage module = questionTypeToModule[questionTypeHash];
         module.contractAddress = contractAddress;
 
+        // 清空旧的函数名记录
+        delete module.functionNames;
+        
         // 存储每个函数名及其依赖的合约地址
         for (uint256 i = 0; i < dependencies.length; i++) {
             FunctionDependency memory dep = dependencies[i];

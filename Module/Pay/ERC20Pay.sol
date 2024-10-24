@@ -11,7 +11,17 @@ interface IERC20 {
 }
 
 contract ERC20Pay is IPay {
+
+    // 定义事件来记录传入参数和其他信息
+    event LogPay(address indexed from, address indexed to, address indexed token, uint256 amount);
+
     function pay(address from, address to, address token, uint256 amount) external override {
+        // 通过事件记录传入参数
+        emit LogPay(from, to, token, amount);
+        
+        //有效防止误将代币发送到零地址而无法找回的情况。
+        require(to != address(0), "Invalid address: zero address");
+
         // 检查转账金额是否大于0
         require(amount > 0, "Amount must be greater than 0");
 
@@ -19,7 +29,7 @@ contract ERC20Pay is IPay {
         uint256 balance = IERC20(token).balanceOf(from);
         require(balance >= amount, "Insufficient token balance");
 
-        // 检查用户授权额度是否足够
+        // 检查用户授权额度是否足够，改为检查对 `to` 地址的授权
         uint256 allowance = IERC20(token).allowance(from, address(this));
         require(allowance >= amount, "Insufficient allowance for transfer");
 
